@@ -47,6 +47,13 @@ app.use(cookieParser());
 app.use(logRequests);
 
 // Debug middleware (only in development)
+if (process.env.NODE_ENV !== "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")))
+
+    app.get("*", (req, res) => {
+        res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"))
+    })
+}
 
 // API routes
 app.use("/api/v1/auth", authRouter);
@@ -122,14 +129,7 @@ app.use("/", (req, res) => {
   });
 });
 
-// Production setup
-if(process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "../frontend/dist")))
 
-    app.get("*", (req, res) => {
-        res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"))
-    })
-}
 
 // Test database connection
 async function testDatabaseConnection() {
