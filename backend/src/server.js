@@ -157,7 +157,7 @@ const startServer = async () => {
     try {
         await testDatabaseConnection() ; 
         app.listen(ENV.PORT, () => {
-            console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`)
+            console.log(`Server running in ${process.env.NODE_ENV} mode on port ${ENV.PORT}`)
         });
     } catch (error) {
         console.error('Failed to start server:', error);
