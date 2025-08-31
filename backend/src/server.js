@@ -155,7 +155,7 @@ async function testDatabaseConnection() {
 
 const startServer = async () => {
     try {
-        await connectDB();
+        await testDatabaseConnection() ; 
         app.listen(PORT, () => {
             console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`)
         });
