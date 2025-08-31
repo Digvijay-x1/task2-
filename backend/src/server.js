@@ -47,12 +47,6 @@ app.use(cookieParser());
 app.use(logRequests);
 
 // Debug middleware (only in development)
-if (process.env.NODE_ENV !== "production") {
-  app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url} - Body:`, req.body);
-    next();
-  });
-}
 
 // API routes
 app.use("/api/v1/auth", authRouter);
