@@ -26,7 +26,14 @@ import prisma from "./prisma/client.js";
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+    },
+  })
+);
 app.use(cors({
     origin: process.env.NODE_ENV === "production" 
         ? process.env.FRONTEND_URL 

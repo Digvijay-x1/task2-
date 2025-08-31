@@ -53,6 +53,8 @@ const AddProductPage = () => {
     queryFn: () => categoriesAPI.getCategories(),
   });
 
+  console.log("the cate" , categoriesData) ; 
+
   // Create product mutation
   const createProductMutation = useMutation({
     mutationFn: (productData) => productsAPI.createProduct(productData),
