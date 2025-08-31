@@ -3,7 +3,10 @@ import cors from "cors";
 import helmet from "helmet";
 import ENV from "./config/env.config.js";
 import cookieParser from "cookie-parser";
+import dotenv from "dotenv" ; 
+import path from "path" ; 
 
+dotenv.config() ; 
 // Import routers
 import authRouter from "./routers/auth.router.js";
 import productRouter from "./routers/product.router.js";
@@ -24,22 +27,19 @@ const app = express();
 
 // Security middleware
 app.use(helmet());
-app.use(
-  cors({
-    origin: [
-      process.env.FRONTEND_URL || "http://localhost:5173",
-      "http://localhost:3000",
-      "http://localhost:5173",
-    ],
-    credentials: true,
-  })
-);
+app.use(cors({
+    origin: process.env.NODE_ENV === "production" 
+        ? process.env.FRONTEND_URL 
+        : "http://localhost:5173",
+    credentials: true
+}))
 
 // General rate limiting (disabled for testing)
 // app.use(generalRateLimit);
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
+const __dirname = path.resolve();
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
@@ -128,6 +128,15 @@ app.use("/", (req, res) => {
   });
 });
 
+// Production setup
+if(process.env.NODE_ENV === "production") {
+    app.use(express.static(path.join(__dirname, "../frontend/dist")))
+
+    app.get("*", (req, res) => {
+        res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"))
+    })
+}
+
 // Test database connection
 async function testDatabaseConnection() {
   try {
@@ -142,7 +151,18 @@ async function testDatabaseConnection() {
   }
 }
 
-app.listen(ENV.PORT, async () => {
-  console.log(`Server is running on port ${ENV.PORT}`);
-  await testDatabaseConnection();
-});
+
+
+const startServer = async () => {
+    try {
+        await connectDB();
+        app.listen(PORT, () => {
+            console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`)
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+startServer();
