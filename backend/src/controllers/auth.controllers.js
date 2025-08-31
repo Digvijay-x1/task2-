@@ -34,7 +34,7 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    // validate the feilds
+    // validate the fields
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
@@ -74,12 +74,30 @@ export const login = async (req, res) => {
 };
 
 export const me = async (req, res) => {
-  const { email } = req.body;
-
   try {
+    // User is already available from authentication middleware
     const user = await prisma.user.findUnique({
       where: {
-        email: email,
+        id: req.user.id,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        location: true,
+        contactInfo: true,
+        profilePicture: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            products: true,
+            cartItems: true,
+            favorites: true,
+            orders: true,
+          },
+        },
       },
     });
 
@@ -87,9 +105,9 @@ export const me = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    return res.status(200).json(user);
+    return res.status(200).json({ user });
   } catch (error) {
-    console.error("Error in getUser:", error);
+    console.error("Error in me controller:", error);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

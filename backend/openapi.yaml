@@ -1,0 +1,662 @@
+openapi: 3.0.3
+info:
+  title: Marketplace API
+  description: A reselling marketplace backend with authentication, product management, cart, and checkout functionality
+  version: 1.0.0
+  contact:
+    name: Marketplace API Support
+    email: support@marketplace.com
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://your-deployment-url.com
+    description: Production server
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: jwt
+    adminAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        location:
+          type: string
+          nullable: true
+        contactInfo:
+          type: string
+          nullable: true
+        profilePicture:
+          type: string
+          nullable: true
+        role:
+          type: string
+          enum: [Buyer, Seller, Admin]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        sku:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: number
+          format: float
+        condition:
+          type: string
+          enum: [New, LikeNew, Good, Fair, Poor, Used]
+        availability:
+          type: boolean
+        quantity:
+          type: integer
+        sellerId:
+          type: integer
+        categoryId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        quantity:
+          type: integer
+        productId:
+          type: integer
+        userId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        orderNumber:
+          type: string
+        status:
+          type: string
+          enum: [Pending, Confirmed, Shipped, Delivered, Cancelled, Refunded]
+        subtotal:
+          type: number
+          format: float
+        platformFee:
+          type: number
+          format: float
+        total:
+          type: number
+          format: float
+        shippingAddress:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+
+    PaginationInfo:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+        totalPages:
+          type: integer
+        totalCount:
+          type: integer
+        hasNextPage:
+          type: boolean
+        hasPrevPage:
+          type: boolean
+
+security:
+  - cookieAuth: []
+
+paths:
+  # Authentication endpoints
+  /api/v1/auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                role:
+                  type: string
+                  enum: [Buyer, Seller]
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout user
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  # Product endpoints
+  /api/v1/products:
+    get:
+      tags: [Products]
+      summary: Get all products with pagination and filters
+      security: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: category
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+        - name: condition
+          in: query
+          schema:
+            type: string
+            enum: [New, LikeNew, Good, Fair, Poor, Used]
+        - name: location
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+
+    post:
+      tags: [Products]
+      summary: Create a new product (Seller only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, price, categoryId]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                  format: float
+                condition:
+                  type: string
+                  enum: [New, LikeNew, Good, Fair, Poor, Used]
+                quantity:
+                  type: integer
+                  minimum: 1
+                categoryId:
+                  type: integer
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: base64
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  product:
+                    $ref: '#/components/schemas/Product'
+
+  /api/v1/products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Product'
+                  - type: object
+                    properties:
+                      isFavorited:
+                        type: boolean
+
+    put:
+      tags: [Products]
+      summary: Update product (Seller/Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                condition:
+                  type: string
+                  enum: [New, LikeNew, Good, Fair, Poor, Used]
+                quantity:
+                  type: integer
+                availability:
+                  type: boolean
+      responses:
+        '200':
+          description: Product updated successfully
+
+    delete:
+      tags: [Products]
+      summary: Delete product (Seller/Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Product deleted successfully
+
+  # Cart endpoints
+  /api/v1/cart:
+    get:
+      tags: [Cart]
+      summary: Get user's cart
+      responses:
+        '200':
+          description: Cart retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cartItems:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CartItem'
+                  summary:
+                    type: object
+                    properties:
+                      itemCount:
+                        type: integer
+                      subtotal:
+                        type: number
+                      totalItems:
+                        type: integer
+
+  /api/v1/cart/add:
+    post:
+      tags: [Cart]
+      summary: Add item to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId]
+              properties:
+                productId:
+                  type: integer
+                quantity:
+                  type: integer
+                  default: 1
+      responses:
+        '201':
+          description: Item added to cart successfully
+
+  # Checkout endpoint with special requirements
+  /api/v1/checkout:
+    post:
+      tags: [Checkout]
+      summary: Process checkout (Rate limited - 7 req/min)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: UUID v4 for idempotency (retries within 5 minutes)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shippingAddress]
+              properties:
+                shippingAddress:
+                  type: string
+                paymentMethod:
+                  type: string
+      responses:
+        '201':
+          description: Checkout successful
+          headers:
+            X-Signature:
+              description: HMAC-SHA256 signature of response body using ASSIGNMENT_SEED
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  order:
+                    $ref: '#/components/schemas/Order'
+        '429':
+          description: Rate limit exceeded (7 requests per minute)
+
+  # Categories
+  /api/v1/categories:
+    get:
+      tags: [Categories]
+      summary: Get all categories
+      security: []
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+  # Favorites
+  /api/v1/favorites:
+    get:
+      tags: [Favorites]
+      summary: Get user's favorite products
+      responses:
+        '200':
+          description: Favorites retrieved successfully
+
+  /api/v1/favorites/{productId}:
+    post:
+      tags: [Favorites]
+      summary: Add product to favorites
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Product added to favorites
+
+  # Special deployment routes
+  /{IEC2024058}/healthz:
+    get:
+      tags: [System]
+      summary: Health check with roll number
+      security: []
+      parameters:
+        - name: IEC2024058
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: System healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  rollno:
+                    type: string
+                  database:
+                    type: string
+                  timestamp:
+                    type: string
+                  assignmentSeed:
+                    type: string
+
+  /logs/recent:
+    get:
+      tags: [System]
+      summary: Get recent request logs (last 50, redacted)
+      security: []
+      responses:
+        '200':
+          description: Recent logs retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  timestamp:
+                    type: string
+
+tags:
+  - name: Authentication
+    description: User authentication and profile management
+  - name: Products
+    description: Product listing and management
+  - name: Cart
+    description: Shopping cart operations
+  - name: Checkout
+    description: Order processing and checkout
+  - name: Categories
+    description: Product categories
+  - name: Favorites
+    description: User favorites and likes
+  - name: System
+    description: System health and logging
