@@ -1,0 +1,21 @@
+{
+  "name": "task2",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "pnpm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend",
+    "start": "cd backend && pnpm start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Digvijay-x1/geekheaven.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Digvijay-x1/task2-/issues"
+  },
+  "homepage": "https://github.com/Digvijay-x1/geekheaven#readme",
+  "description": ""
+}
